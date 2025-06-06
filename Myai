@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تتبع اليد بالكاميرا</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; background: #000; font-family: sans-serif; color: white; }
+    #message {
+      position: absolute;
+      top: 10px; left: 50%; transform: translateX(-50%);
+      background: #fff; color: #000; padding: 12px 20px;
+      border-radius: 10px; z-index: 10; font-size: 16px;
+      text-align: center; max-width: 90%;
+    }
+    video, canvas {
+      position: absolute; top: 0; left: 0;
+      width: 100vw; height: 100vh; object-fit: cover;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+</head>
+<body>
+  <div id="message">📷 الرجاء السماح باستخدام الكاميرا لمتابعة اليد</div>
+  <video class="input_video" autoplay playsinline muted style="display: none;"></video>
+  <canvas class="output_canvas"></canvas>
+  <script>
+    const video = document.querySelector('.input_video');
+    const canvas = document.querySelector('.output_canvas');
+    const ctx = canvas.getContext('2d');
+    const message = document.getElementById('message');
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    async function setupCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        message.innerText = '❌ المتصفح لا يدعم الكاميرا. استخدم HTTPS أو متصفح حديث.';
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        await new Promise((resolve) => { video.onloadedmetadata = resolve; });
+        message.style.display = 'none';
+      } catch (err) {
+        message.innerText = '🚫 تم رفض الوصول إلى الكاميرا. الرجاء السماح في الإعدادات.';
+      }
+    }
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.6
+    });
+    hands.onResults((results) => {
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+      if (results.multiHandLandmarks) {
+        for (const landmarks of results.multiHandLandmarks) {
+          drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 3 });
+          drawLandmarks(ctx, landmarks, { color: '#FF0000', radius: 5 });
+        }
+      }
+      ctx.restore();
+    });
+    setupCamera().then(() => {
+      const camera = new Camera(video, {
+        onFrame: async () => { await hands.send({ image: video }); },
+        width: 1280,
+        height: 720
+      });
+      camera.start();
+    });
+  </script>
+</body>
+</html>
