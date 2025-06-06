@@ -1,476 +1,69 @@
 <!DOCTYPE html>
-
-<style>
-  .suggestions {
-    margin-top: -10px;
-    margin-bottom: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .suggestion {
-    background-color: #2c2c2c;
-    color: #03dac6;
-    padding: 6px 12px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background-color 0.2s;
-  }
-
-  .suggestion:hover {
-    background-color: #3d3d3d;
-  }
-</style>
-
-<html lang="ar">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>الباحث عن اسم المستخدم في الشبكات الاجتماعية</title>
+  <meta charset="UTF-8">
+  <title>Hand Tracker</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #121212;
-      color: #ffffff;
       margin: 0;
-      padding: 20px;
-      direction: rtl;
+      overflow: hidden;
     }
-
-    .container {
-      max-width: 900px;
-      margin: auto;
-    }
-
-    h2 {
-      text-align: center;
-      color: #03dac6;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 12px;
-      font-size: 1rem;
-      margin: 20px 0;
-      border: none;
-      border-radius: 5px;
-      background-color: #1f1f1f;
-      color: #ffffff;
-    }
-
-    .links {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 15px;
-    }
-
-    .card {
-      background-color: #1e1e1e;
-      border-radius: 8px;
-      padding: 15px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-      transition: transform 0.2s;
-      text-align: center;
-    }
-
-    .card:hover {
-      transform: scale(1.02);
-    }
-
-    .card a {
-      color: #03a9f4;
-      text-decoration: none;
-      word-break: break-word;
-      display: block;
-      margin-top: 8px;
-    }
-
-    .card a:hover {
-      text-decoration: underline;
-    }
-
-    .card-title {
-      font-weight: bold;
-      margin-bottom: 8px;
-      color: #f4f4f4;
-    }
-
-    .card img {
-      display: block;
-      margin: 0 auto 10px;
-      width: 32px;
-      height: 32px;
-      border-radius: 5px;
-      object-fit: contain;
-      background-color: #00000055;
-      padding: 2px;
+    canvas, video {
+      position: absolute;
+      top: 0;
+      left: 0;
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 </head>
 <body>
-
-<div class="suggestions" id="suggestions"></div>
-  <div class="container">
-    <h2>الباحث عن اسم المستخدم في الشبكات الاجتماعية</h2>
-    <input type="text" id="username" placeholder="أدخل اسم المستخدم..." />
-    <div class="links" id="links"></div>
-  </div>
+  <video class="input_video" style="display:none;" autoplay playsinline></video>
+  <canvas class="output_canvas" width="1280" height="720"></canvas>
 
   <script>
-    const usernameInput = document.getElementById('username');
-    const linksDiv = document.getElementById('links');
+    const videoElement = document.querySelector('.input_video');
+    const canvasElement = document.querySelector('.output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
 
-    const platforms = {
-      "Instagram": {
-        url: "https://www.instagram.com/",
-        slug: "instagram"
-      },
-      "Twitter": {
-        url: "https://twitter.com/",
-        slug: "twitter"
-      },
-      "Facebook": {
-        url: "https://www.facebook.com/",
-        slug: "facebook"
-      },
-      "LinkedIn": {
-        url: "https://www.linkedin.com/in/",
-        slug: "linkedin"
-      },
-      "TikTok": {
-        url: "https://www.tiktok.com/@",
-        slug: "tiktok"
-      },
-      "Snapchat": {
-        url: "https://www.snapchat.com/add/",
-        slug: "snapchat"
-      },
-      "Reddit": {
-        url: "https://www.reddit.com/user/",
-        slug: "reddit"
-      },
-      "Telegram": {
-        url: "https://t.me/",
-        slug: "telegram"
-      },
-      "GitHub": {
-        url: "https://github.com/",
-        slug: "github"
-      },
-      "GitLab": {
-        url: "https://gitlab.com/",
-        slug: "gitlab"
-      },
-      "Pinterest": {
-        url: "https://www.pinterest.com/",
-        slug: "pinterest"
-      },
-      "YouTube": {
-        url: "https://www.youtube.com/",
-        slug: "youtube"
-      },
-      "SoundCloud": {
-        url: "https://soundcloud.com/",
-        slug: "soundcloud"
-      },
-      "Medium": {
-        url: "https://medium.com/@",
-        slug: "medium"
-      },
-      "Tumblr": {
-        url: "https://www.tumblr.com/",
-        slug: "tumblr"
-      },
-      "Trello": {
-        url: "https://trello.com/",
-        slug: "trello"
-      },
-      "Patreon": {
-        url: "https://www.patreon.com/",
-        slug: "patreon"
-      },
-      "Quora": {
-        url: "https://www.quora.com/profile/",
-        slug: "quora"
-      },
-      "Vimeo": {
-        url: "https://vimeo.com/",
-        slug: "vimeo"
-      },
-      "Bitbucket": {
-        url: "https://bitbucket.org/",
-        slug: "bitbucket"
-      },
-      "Blogger": {
-        url: "https://www.blogger.com/profile/",
-        slug: "blogger"
-      },
-      "Goodreads": {
-        url: "https://www.goodreads.com/user/show/",
-        slug: "goodreads"
-      },
-      "Dribbble": {
-        url: "https://dribbble.com/",
-        slug: "dribbble"
-      },
-      "Behance": {
-        url: "https://www.behance.net/",
-        slug: "behance"
-      },
-      "Flickr": {
-        url: "https://www.flickr.com/people/",
-        slug: "flickr"
-      },
-      "ProductHunt": {
-        url: "https://www.producthunt.com/@",
-        slug: "producthunt"
-      },
-      "Dev.to": {
-        url: "https://dev.to/",
-        slug: "devdotto"
-      },
-      "500px": {
-        url: "https://500px.com/",
-        slug: "500px"
-      },
-      "Replit": {
-        url: "https://replit.com/@",
-        slug: "replit"
-      },
-      "Codepen": {
-        url: "https://codepen.io/",
-        slug: "codepen"
-      },
-      "Hashnode": {
-        url: "https://hashnode.com/@",
-        slug: "hashnode"
-      },
-      "Kaggle": {
-        url: "https://www.kaggle.com/",
-        slug: "kaggle"
-      },
-      "StackOverflow": {
-        url: "https://stackoverflow.com/users/",
-        slug: "stackoverflow"
-      },
-      "Twitch": {
-        url: "https://www.twitch.tv/",
-        slug: "twitch"
-      },
-      "Kick": {
-        url: "https://kick.com/",
-        slug: "kickstarter"
-      },
-      "Discord": {
-        url: "https://discord.com/users/",
-        slug: "discord"
-      },
-      "Steam": {
-        url: "https://steamcommunity.com/id/",
-        slug: "steam"
-      },
-      "Origin": {
-        url: "https://www.origin.com/usa/en-us/profile/",
-        slug: "ea"
-      },
-      "Xbox": {
-        url: "https://account.xbox.com/en-us/profile?gamertag=",
-        slug: "xbox"
-      },
-      "PlayStation": {
-        url: "https://my.playstation.com/profile/",
-        slug: "playstation"
-      },
-      "GOG": {
-        url: "https://www.gog.com/u/",
-        slug: "gogdotcom"
-      },
-      "Epic Games": {
-        url: "https://www.epicgames.com/id/",
-        slug: "epicgames"
-      },
-      "Bandcamp": {
-        url: "https://bandcamp.com/",
-        slug: "bandcamp"
-      },
-      "Mixcloud": {
-        url: "https://www.mixcloud.com/",
-        slug: "mixcloud"
-      },
-      "About.me": {
-        url: "https://about.me/",
-        slug: "aboutdotme"
-      },
-      "CashApp": {
-        url: "https://cash.app/$",
-        slug: "cashapp"
-      },
-      "PayPal": {
-        url: "https://www.paypal.me/",
-        slug: "paypal"
-      },
-      "Venmo": {
-        url: "https://venmo.com/",
-        slug: "venmo"
-      },
-      "Strava": {
-        url: "https://www.strava.com/athletes/",
-        slug: "strava"
-      },
-      "Letterboxd": {
-        url: "https://letterboxd.com/",
-        slug: "letterboxd"
-      },
-      "Last.fm": {
-        url: "https://www.last.fm/user/",
-        slug: "lastdotfm"
-      },
-      "Itch.io": {
-        url: "https://itch.io/profile/",
-        slug: "itchdotio"
-      },
-      "Rumble": {
-        url: "https://rumble.com/user/",
-        slug: "rumble"
-      },
-      "Ko-fi": {
-        url: "https://ko-fi.com/",
-        slug: "kofi"
-      },
-      "Notion": {
-        url: "https://www.notion.so/",
-        slug: "notion"
-      },
-      "Substack": {
-        url: "https://substack.com/profile/",
-        slug: "substack"
-      },
-      "Buy Me a Coffee": {
-        url: "https://www.buymeacoffee.com/",
-        slug: "buymeacoffee"
-      },
-      "Scribd": {
-        url: "https://www.scribd.com/user/",
-        slug: "scribd"
-      },
-      "Wattpad": {
-        url: "https://www.wattpad.com/user/",
-        slug: "wattpad"
-      },
-      "Chess.com": {
-        url: "https://www.chess.com/member/",
-        slug: "chessdotcom"
-       },
-      "Duolingo": {
-        url: "https://www.duolingo.com/profile/",
-        slug: "duolingo"
-      },
-      "Anchor.fm": {
-        url: "https://anchor.fm/",
-        slug: "anchor"
-      },
-      "Pixiv": {
-        url: "https://www.pixiv.net/en/users/",
-        slug: "pixiv"
-      },
-      "DeviantArt": {
-        url: "https://www.deviantart.com/",
-        slug: "deviantart"
-      },
-      "Imgur": {
-        url: "https://imgur.com/user/",
-        slug: "imgur"
-      },
-      "Instructables": {
-        url: "https://www.instructables.com/member/",
-        slug: "instructables"
-      },
-      "Hackaday": {
-        url: "https://hackaday.io/",
-        slug: "hackaday"
-      },
-      "Roblox": {
-        url: "https://www.roblox.com/users/profile?username=",
-        slug: "roblox"
-      },
-      "NameMC (Minecraft)": {
-        url: "https://namemc.com/profile/",
-        slug: "minecraft"
-      },
-      "Planet Minecraft": {
-        url: "https://www.planetminecraft.com/member/",
-        slug: "minecraft"
-      },
-      "Fortnite Tracker": {
-        url: "https://fortnitetracker.com/profile/all/",
-        slug: "epicgames"
+    const hands = new Hands({
+      locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
       }
-    };
+    });
 
-    function updateLinks() {
-      const user = usernameInput.value.trim();
-      if (!user) {
-        linksDiv.innerHTML = '';
-        return;
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.7
+    });
+
+    hands.onResults(results => {
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+      if (results.multiHandLandmarks) {
+        for (const landmarks of results.multiHandLandmarks) {
+          drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#0f0', lineWidth: 3 });
+          drawLandmarks(canvasCtx, landmarks, { color: '#f00', radius: 5 });
+        }
       }
-      let html = '';
-      for (const [name, data] of Object.entries(platforms)) {
-        const link = `${data.url}${user}`;
-        const iconURL = `https://cdn.simpleicons.org/${data.slug}/ffffff/333333`;
-        html += `
-          <div class="card">
-            <img src="${iconURL}" alt="${name} logo" />
-            <div class="card-title">${name}</div>
-            <a href="${link}" target="_blank">${link}</a>
-          </div>
-        `;
-      }
-      linksDiv.innerHTML = html;
-    }
 
-    usernameInput.addEventListener('input', updateLinks);
-    
-    
-    
-    const suggestionsDiv = document.getElementById('suggestions');
+      canvasCtx.restore();
+    });
 
-function generateSuggestions(username) {
-  if (!username || username.length < 3) {
-    suggestionsDiv.innerHTML = '';
-    return;
-  }
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await hands.send({ image: videoElement });
+      },
+      width: 1280,
+      height: 720
+    });
 
-  const suffixes = ['123', '_dev', '_official', '_0', '_x', '01', 'real', 'the'];
-  const prefixes = ['its', 'the', 'real', 'iam'];
-  const allSuggestions = [];
-
-  suffixes.forEach(s => allSuggestions.push(username + s));
-  prefixes.forEach(p => allSuggestions.push(p + username));
-  allSuggestions.push(username + '_' + new Date().getFullYear());
-
-  suggestionsDiv.innerHTML = '';
-  allSuggestions.forEach(suggestion => {
-    const span = document.createElement('span');
-    span.className = 'suggestion';
-    span.textContent = suggestion;
-    span.onclick = () => {
-      usernameInput.value = suggestion;
-      updateLinks();
-      generateSuggestions(suggestion); // إعادة تحديث الاقتراحات
-    };
-    suggestionsDiv.appendChild(span);
-  });
-}
-
-usernameInput.addEventListener('input', () => {
-  updateLinks();
-  generateSuggestions(usernameInput.value.trim());
-});
-    
+    camera.start();
   </script>
 </body>
 </html>
-
-<p1>osman</p1>
